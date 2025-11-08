@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 
 from database import get_db
 from models import User
@@ -49,14 +49,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 
 # достаёт пользователя по JWT из заголовка
-def get_current_user(authorization: str = Header(...), db: Session = Depends(get_db)):
-    if not authorization.startswith("Bearer "): # если заголовок неправильный
-        raise HTTPException(status_code=401, detail="Invalid authorization header")
-    token = authorization.split(" ")[1] # берем вторую часть строки, т.е. JWT
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = verify_jwt_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
+    
     user = db.query(User).filter(User.id == payload["user_id"]).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
