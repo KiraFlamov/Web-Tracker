@@ -1,23 +1,40 @@
-from fastapi import FastAPI, Depends, HTTPException, Request
+from fastapi import FastAPI, Depends, HTTPException, Request, Form
+from flask import request
 from sqlalchemy.orm import Session
-from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse, HTMLResponse
 
 from database import get_db
 from models import User, Task
 from schemas import UserCreate, UserOut, Token, TaskOut, TaskCreate, TaskUpdate
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
 
-app = FastAPI(
-    title="Task Tracker API",
-    description="Приложение для управления задачами. Пользователи, JWT и CRUD для задач.",
-    version="1.0.0"
-)
+app = FastAPI()
 
 templates = Jinja2Templates(directory="templates") # подключаем Jinja2
 
+
+# достаёт пользователя по JWT из заголовка
+def get_current_user(request: Request, db: Session = Depends(get_db)):
+    # проверяем наличие токена, иначе возвращаем на логин
+    if "access_token" in request.cookies:
+        token = request.cookies.get("access_token")[7:]  # убираем "Bearer "
+    if not token:
+        return RedirectResponse("/login", status_code=303)
+
+    # проверяем подлинность токена
+    payload = verify_jwt_token(token)
+    if payload is None:
+        return RedirectResponse("/login", status_code=303)
+
+    user = db.query(User).filter(User.id == payload["user_id"]).first()
+    if user is None:
+        return RedirectResponse("/login", status_code=303)
+    return user
+
+
 # регистрация
-@app.post("/register", response_model=UserOut)
+@app.post("/register", response_class=HTMLResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
     # Проверяем, существует ли пользователь с таким логином
     existing_user = db.query(User).filter(User.username == user.username).first() # первый найденный объект
@@ -39,33 +56,27 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 
 # вход
-@app.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    # готовая форма авторизации ↑, автоматически принимает username и password
+@app.post("/login")
+def login(response: RedirectResponse, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     # ищем пользователя в БД
-    user = db.query(User).filter(User.username == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Неверный логин или пароль"})
+
     # Генерируем токен
     token = create_jwt_token({"user_id": user.id})
-    return {"access_token": token, "token_type": "bearer"}
+
+    # возвращаем редирект на главную страницу + ставим cookie
+    response = RedirectResponse(url="/home", status_code=303)
+    response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True) # httponly - чтобы никто не увидел
+    return response
 
 
-# достаёт пользователя по JWT из заголовка
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = verify_jwt_token(token)
-    if payload is None:
-        raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-    user = db.query(User).filter(User.id == payload["user_id"]).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
 
 
 # информация о текущем юзере
-@app.get("/users/me", response_model=UserOut)
+@app.get("/users/me")
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
