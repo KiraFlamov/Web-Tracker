@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.templating import Jinja2Templates
 
 from database import get_db
-from models import User
-from schemas import UserCreate, UserOut, Token
+from models import User, Task
+from schemas import UserCreate, UserOut, Token, TaskOut, TaskCreate, TaskUpdate
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
 
 app = FastAPI(
@@ -12,6 +13,8 @@ app = FastAPI(
     description="Приложение для управления задачами. Пользователи, JWT и CRUD для задач.",
     version="1.0.0"
 )
+
+templates = Jinja2Templates(directory="templates") # подключаем Jinja2
 
 # регистрация
 @app.post("/register", response_model=UserOut)
@@ -54,13 +57,66 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     payload = verify_jwt_token(token)
     if payload is None:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-    
+
     user = db.query(User).filter(User.id == payload["user_id"]).first()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 
+# информация о текущем юзере
 @app.get("/users/me", response_model=UserOut)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+# показать список задач текущего юзера
+@app.get("/tasks", response_model=list[TaskOut])
+def read_tasks(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
+    return tasks
+
+
+# создать задачу
+@app.post("/create_task", response_model=TaskOut)
+def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    new_task = Task(
+        title=task.title,
+        description=task.description,
+        status=task.status,
+        user_id=current_user.id
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
+
+
+# изменить задачу
+@app.put("/tasks/{task_id}", response_model=TaskOut)
+def edit_task(task_id: int, task: TaskUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    existing_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not existing_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if task.title is not None:
+        existing_task.title = task.title
+    if task.description is not None:
+        existing_task.description = task.description
+    if task.status is not None:
+        existing_task.status = task.status
+
+    db.commit()
+    db.refresh(existing_task)
+    return existing_task
+
+
+# удалить задачу
+@app.delete("/tasks/{task_id}", status_code=204)
+def delete_task(task_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(task)
+    db.commit()
+    return
