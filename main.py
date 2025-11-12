@@ -6,7 +6,6 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 
 from database import get_db
 from models import User, Task
-from schemas import UserCreate, UserOut, Token, TaskOut, TaskCreate, TaskUpdate
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
 
 app = FastAPI()
@@ -35,7 +34,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
 
 # регистрация
 @app.post("/register", response_class=HTMLResponse)
-def register(user: UserCreate, db: Session = Depends(get_db)):
+def register(db: Session = Depends(get_db)):
     # Проверяем, существует ли пользователь с таким логином
     existing_user = db.query(User).filter(User.username == user.username).first() # первый найденный объект
     if existing_user:
@@ -74,6 +73,9 @@ def login(response: RedirectResponse, username: str = Form(...), password: str =
 
 
 
+@app.get("/")
+def home(current_user: User = Depends(get_current_user)):
+    return RedirectResponse(url="/home", status_code=303)
 
 # информация о текущем юзере
 @app.get("/users/me")
@@ -82,15 +84,15 @@ def read_users_me(current_user: User = Depends(get_current_user)):
 
 
 # показать список задач текущего юзера
-@app.get("/tasks", response_model=list[TaskOut])
+@app.get("/tasks")
 def read_tasks(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     tasks = db.query(Task).filter(Task.user_id == current_user.id).all()
     return tasks
 
 
 # создать задачу
-@app.post("/create_task", response_model=TaskOut)
-def create_task(task: TaskCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@app.post("/create_task")
+def create_task(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     new_task = Task(
         title=task.title,
         description=task.description,
@@ -104,8 +106,8 @@ def create_task(task: TaskCreate, current_user: User = Depends(get_current_user)
 
 
 # изменить задачу
-@app.put("/tasks/{task_id}", response_model=TaskOut)
-def edit_task(task_id: int, task: TaskUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@app.put("/tasks/{task_id}")
+def edit_task(task_id: int, task: Form(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     existing_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
     if not existing_task:
         raise HTTPException(status_code=404, detail="Task not found")

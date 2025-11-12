@@ -1,3 +1,4 @@
 *.env
 __pycache__/
-schemas.py
+to_create_tables.py
+config.py
