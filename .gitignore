@@ -1,4 +1,3 @@
-*.env
-__pycache__/
+.env
 to_create_tables.py
 config.py
