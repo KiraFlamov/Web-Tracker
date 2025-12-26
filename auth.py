@@ -25,10 +25,4 @@ def create_jwt_token(data: dict):
 
 # Функция для проверки JWT токена
 def verify_jwt_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload  # нагрузка. например, {"user_id": 1, "exp": ...}
-    except jwt.ExpiredSignatureError:
-        return None  # токен истёк
-    except jwt.InvalidTokenError:
-        return None  # токен неверен
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

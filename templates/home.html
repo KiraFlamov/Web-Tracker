@@ -5,6 +5,70 @@
     <title>Home</title>
 </head>
 <body>
-    <p>Tasks>
+    <h1>Задачи</h1>
+    <h2>Привет, {{user.username}}!</h2>
+
+
+    <div class="container">
+
+
+        <div>
+            <strong>Сортировка:</strong>
+
+            <a href="/home?sort=date">
+                По дате
+            </a>
+            |
+
+            <a href="/home?sort=status">
+                По статусу
+            </a>
+        </div>
+        <br>
+
+
+        <ul>
+        {% for task in tasks %}
+            <li>
+
+                <form action="/tasks/toggle/{{ task.id }}" method="post" style="display:inline;">
+                    <input
+                        type="checkbox"
+                        onchange="this.form.submit()"
+                        {% if task.status == 'done' %}checked{% endif %}
+                    >
+                </form>
+
+                <strong>{{ task.title }}</strong>
+                — {{ "Выполнено" if task.status == "done" else "В процессе" }}
+
+
+                <form action="/tasks/edit/{{task.id}}" method="post">
+                    <button type="submit">Изменить</button>
+                </form>
+
+                <form action="/tasks/delete/{{ task.id }}" method="post">
+                    <button type="submit" style="color:red;">Удалить</button>
+                </form>
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+
+    <h3>Создать задачу</h3>
+
+<form action="/create_task" method="post">
+    <input type="text" name="title" placeholder="Название задачи" required>
+    <br>
+
+    <textarea name="description" placeholder="Описание задачи" required></textarea>
+    <br>
+
+    <button type="submit">Создать</button>
+</form>
+
+
+
+    <a href="/logout">Выйти</a>
 </body>
 </html>

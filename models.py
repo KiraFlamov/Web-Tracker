@@ -1,8 +1,9 @@
 #-------------- Описание моделей (таблиц) БД --------------#
 
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
 
 
 class User(Base):
@@ -23,5 +24,6 @@ class Task(Base):
     description = Column(String)
     status = Column(String, default="pending")
     user_id = Column(Integer, ForeignKey("users.id")) # связь с id модели "User"
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     owner = relationship("User", back_populates="tasks")
