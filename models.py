@@ -1,10 +1,9 @@
 #-------------- Описание моделей (таблиц) БД --------------#
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, func
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
-
 
 class User(Base):
     __tablename__ = "users" # имя таблицы БД
@@ -24,6 +23,8 @@ class Task(Base):
     description = Column(String)
     status = Column(String, default="pending")
     user_id = Column(Integer, ForeignKey("users.id")) # связь с id модели "User"
+
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     owner = relationship("User", back_populates="tasks")

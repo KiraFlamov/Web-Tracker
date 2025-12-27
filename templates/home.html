@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Home</title>
+    {#<link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}"> <!-- подключаем css --> #}
 </head>
 <body>
     <h1>Задачи</h1>
     <h2>Привет, {{user.username}}!</h2>
-
+    <a href="/users/me">Мой профиль</a>
 
     <div class="container">
 
@@ -15,41 +16,54 @@
         <div>
             <strong>Сортировка:</strong>
 
-            <a href="/home?sort=date">
-                По дате
+            {# меняем направление при каждом клике #}
+            <a href="/home?sort=date&order={% if sort == 'date' and order == 'asc' %}desc{% else %}asc{% endif %}"
+               {% if sort == "date" %}style="font-weight:bold"{% endif %}>
+                По дате {% if sort == 'date' %}({{ '↑' if order=='asc' else '↓' }}){% endif %}
             </a>
             |
 
-            <a href="/home?sort=status">
-                По статусу
+            <a href="/home?sort=status&order={% if sort == 'status' and order == 'asc' %}desc{% else %}asc{% endif %}"
+               {% if sort == "status" %}style="font-weight:bold"{% endif %}>
+                По статусу {% if sort == 'status' %}({{ '↑' if order=='asc' else '↓' }}){% endif %}
             </a>
         </div>
+
         <br>
 
 
         <ul>
         {% for task in tasks %}
-            <li>
+            <li id="task-{{ task.id }}" class="task-item">
 
-                <form action="/tasks/toggle/{{ task.id }}" method="post" style="display:inline;">
-                    <input
-                        type="checkbox"
-                        onchange="this.form.submit()"
-                        {% if task.status == 'done' %}checked{% endif %}
-                    >
-                </form>
-
-                <strong>{{ task.title }}</strong>
-                — {{ "Выполнено" if task.status == "done" else "В процессе" }}
+                <!-- Левая часть: текст задачи -->
+                <div class="task-content">
+                    <strong class="task-title">{{ task.title }}</strong>
+                    <p class="task-desc">{{ task.description }}</p>
 
 
-                <form action="/tasks/edit/{{task.id}}" method="post">
-                    <button type="submit">Изменить</button>
-                </form>
 
-                <form action="/tasks/delete/{{ task.id }}" method="post">
-                    <button type="submit" style="color:red;">Удалить</button>
-                </form>
+                    <button onclick="editTask({{ task.id }})">Изменить</button>
+                    <button onclick="saveTask({{ task.id }})" style="display:none;">Сохранить</button>
+
+                    <form action="/tasks/delete/{{ task.id }}" method="post" style="display:inline;">
+                        <button style="color:red;" onclick="return confirm('Удалить заметку?')">Удалить</button>
+                    </form>
+                </div>
+
+                <!-- Правая часть: галочка -->
+                <div class="task-toggle">
+                    <form action="/tasks/toggle/{{ task.id }}" method="post">
+                        <input type="hidden" name="sort" value="{{ sort }}">
+                        <input type="hidden" name="order" value="{{ order }}">
+                        <input
+                            type="checkbox"
+                            onchange="this.form.submit()"
+                            {% if task.status == 'done' %}checked{% endif %}
+                        >
+                    </form>
+                </div>
+
             </li>
         {% endfor %}
         </ul>
@@ -70,5 +84,53 @@
 
 
     <a href="/logout">Выйти</a>
+
+
+    <script>
+        function editTask(taskId) {
+            const task = document.getElementById(`task-${taskId}`);
+
+            const titleEl = task.querySelector(".task-title");
+            const descEl = task.querySelector(".task-desc");
+
+            const titleInput = document.createElement("input");
+            titleInput.value = titleEl.innerText;
+            titleInput.className = "edit-title";
+
+            const descInput = document.createElement("textarea");
+            descInput.value = descEl.innerText;
+            descInput.className = "edit-desc";
+
+            titleEl.replaceWith(titleInput);
+            descEl.replaceWith(descInput);
+
+            task.querySelector("button[onclick^='editTask']").style.display = "none";
+            task.querySelector("button[onclick^='saveTask']").style.display = "inline";
+        }
+
+        async function saveTask(taskId) {
+            const task = document.getElementById(`task-${taskId}`);
+
+            const title = task.querySelector(".edit-title").value;
+            const description = task.querySelector(".edit-desc").value;
+
+            const response = await fetch(`/tasks/edit_js/${taskId}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    title: title,
+                    description: description
+                })
+            });
+
+            if (response.ok) {
+                location.reload(); // можно заменить на локальное обновление
+            } else {
+                alert("Ошибка при сохранении");
+            }
+        }
+        </script>
 </body>
 </html>

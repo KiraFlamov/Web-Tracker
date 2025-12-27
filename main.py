@@ -1,13 +1,21 @@
-from fastapi import FastAPI, Depends, Request, Form, Query
+from fastapi import FastAPI, Depends, Request, Form, Query, Body
 from sqlalchemy.orm import Session
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
 
 from database import get_db
 from models import User, Task
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
 
 app = FastAPI()
+
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static"
+)
 
 templates = Jinja2Templates(directory="templates") # подключаем Jinja2
 
@@ -109,6 +117,7 @@ def home():
 def home_tasks(
         request: Request,
         sort: str = Query("date"),
+        order: str = Query("desc"),  # новое направление сортировки
         current_user: User = Depends(get_current_user),
         db: Session = Depends(get_db)
 ):
@@ -118,11 +127,15 @@ def home_tasks(
     query = db.query(Task).filter(Task.user_id == current_user.id)
 
     if sort == "status":
-        # невыполненные сверху, выполненные снизу
-        query = query.order_by(Task.status.asc())
-    else:
-        # по дате создания (новые сверху)
-        query = query.order_by(Task.created_at.desc())
+        if order == "asc":
+            query = query.order_by(Task.status.asc())
+        else:
+            query = query.order_by(Task.status.desc())
+    else:  # сортировка по дате
+        if order == "asc":
+            query = query.order_by(Task.created_at.asc())
+        else:
+            query = query.order_by(Task.created_at.desc())
 
     tasks = query.all()
 
@@ -132,7 +145,8 @@ def home_tasks(
             "request": request,
             "tasks": tasks,
             "user": current_user,
-            "sort": sort
+            "sort": sort,
+            "order": order
         }
     )
 
@@ -233,13 +247,40 @@ def delete_task(
 # Изменить статус задачи
 # -----------------------------
 @app.post("/tasks/toggle/{task_id}")
-def toggle_task_status(
-        task_id: int,
-        current_user: User = Depends(get_current_user),
-        db: Session = Depends(get_db)
+def toggle_task(
+    task_id: int,
+    sort: str = Form("date"),   # принимаем текущую сортировку
+    order: str = Form("desc"),  # принимаем текущее направление
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     if not current_user:
         return RedirectResponse("/login", status_code=302)
+
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        return RedirectResponse(f"/home?sort={sort}&order={order}", status_code=302)
+
+    # Переключаем статус
+    task.status = "done" if task.status != "done" else "pending"
+    db.commit()
+    db.refresh(task)
+
+    # редирект с сохранением сортировки
+    return RedirectResponse(f"/home?sort={sort}&order={order}", status_code=302)
+
+# -----------------------------
+# Изменить текст задачи
+# -----------------------------
+@app.post("/tasks/edit_js/{task_id}")
+def edit_task_js(
+    task_id: int,
+    data: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
 
     task = db.query(Task).filter(
         Task.id == task_id,
@@ -247,10 +288,12 @@ def toggle_task_status(
     ).first()
 
     if not task:
-        return RedirectResponse("/home", status_code=302)
+        return JSONResponse(status_code=404, content={"error": "Not found"})
 
-    # переключаем статус
-    task.status = "done" if task.status == "pending" else "pending"
+    task.title = data.get("title", task.title)
+    task.description = data.get("description", task.description)
 
     db.commit()
-    return RedirectResponse("/home", status_code=302)
+    db.refresh(task)
+
+    return {"status": "ok"}
