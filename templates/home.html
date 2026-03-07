@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Home</title>
-    {#<link rel="stylesheet" href="{{ request.url_for('static', path='style.css') }}"> <!-- подключаем css --> #}
+    <link rel="stylesheet" href="{{ request.url_for('static', path='style_main.css') }}">
+    <link rel="icon" type="image/png" href="{{ request.url_for('static', path='favicon.ico') }}">
 </head>
+
 <body>
+
     <h1>Задачи</h1>
-    <h2>Привет, {{user.username}}!</h2>
-    <a href="/users/me">Мой профиль</a>
+    <div class="user-info">
+        <h2>Привет, {{user.username}}!</h2>
+    </div>
+
 
     <div class="container">
-
 
         <div>
             <strong>Сортировка:</strong>
@@ -21,6 +25,7 @@
                {% if sort == "date" %}style="font-weight:bold"{% endif %}>
                 По дате {% if sort == 'date' %}({{ '↑' if order=='asc' else '↓' }}){% endif %}
             </a>
+
             |
 
             <a href="/home?sort=status&order={% if sort == 'status' and order == 'asc' %}desc{% else %}asc{% endif %}"
@@ -29,39 +34,34 @@
             </a>
         </div>
 
-        <br>
-
-
         <ul>
         {% for task in tasks %}
             <li id="task-{{ task.id }}" class="task-item">
 
                 <!-- Левая часть: текст задачи -->
                 <div class="task-content">
+                    <p class="task-updated">
+                        Изменено: {{ task.updated_at.strftime("%d.%m.%Y %H:%M:%S") }}
+                    </p>
                     <strong class="task-title">{{ task.title }}</strong>
                     <p class="task-desc">{{ task.description }}</p>
 
-
-
-                    <button onclick="editTask({{ task.id }})">Изменить</button>
-                    <button onclick="saveTask({{ task.id }})" style="display:none;">Сохранить</button>
-
-                    <form action="/tasks/delete/{{ task.id }}" method="post" style="display:inline;">
-                        <button style="color:red;" onclick="return confirm('Удалить заметку?')">Удалить</button>
-                    </form>
+                    <div class="task-buttons">
+                        <button onclick="editTask({{ task.id }})">Изменить</button>
+                        <button onclick="saveTask({{ task.id }})" style="display:none;">Сохранить</button>
+                        <form action="/tasks/delete/{{ task.id }}" method="post">
+                            <button onclick="return confirm('Удалить заметку?')">Удалить</button>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Правая часть: галочка -->
                 <div class="task-toggle">
-                    <form action="/tasks/toggle/{{ task.id }}" method="post">
-                        <input type="hidden" name="sort" value="{{ sort }}">
-                        <input type="hidden" name="order" value="{{ order }}">
-                        <input
-                            type="checkbox"
-                            onchange="this.form.submit()"
-                            {% if task.status == 'done' %}checked{% endif %}
-                        >
-                    </form>
+                    <input
+                        type="checkbox"
+                        {% if task.status == 'done' %}checked{% endif %}
+                        onclick="toggleTaskStatus({{ task.id }}, this.checked)"
+                    >
                 </div>
 
             </li>
@@ -69,18 +69,14 @@
         </ul>
     </div>
 
-    <h3>Создать задачу</h3>
-
-<form action="/create_task" method="post">
-    <input type="text" name="title" placeholder="Название задачи" required>
-    <br>
-
-    <textarea name="description" placeholder="Описание задачи" required></textarea>
-    <br>
-
-    <button type="submit">Создать</button>
-</form>
-
+    <div class="create">
+        <strong>Создать задачу</strong>
+        <form action="/create_task" method="post">
+            <input type="text" name="title" placeholder="Название задачи" required>
+            <textarea name="description" placeholder="Описание задачи"></textarea>
+            <button type="submit">Создать</button>
+        </form>
+    </div>
 
 
     <a href="/logout">Выйти</a>
@@ -126,11 +122,33 @@
             });
 
             if (response.ok) {
-                location.reload(); // можно заменить на локальное обновление
+                location.reload();
             } else {
                 alert("Ошибка при сохранении");
             }
         }
-        </script>
+    </script>
+
+    <script>
+        async function toggleTaskStatus(taskId, isDone) {
+            try {
+                const response = await fetch(`/tasks/toggle_js/${taskId}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ status: isDone ? "done" : "pending" })
+                });
+
+                if (!response.ok) {
+                    alert("Ошибка при обновлении статуса");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Ошибка при подключении к серверу");
+            }
+        }
+    </script>
+
 </body>
 </html>

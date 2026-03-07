@@ -3,17 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <title>Вход</title>
+    <link rel="stylesheet" href="{{ request.url_for('static', path='style_auth.css') }}">
+    <link rel="icon" type="image/png" href="{{ request.url_for('static', path='favicon.ico') }}">
 </head>
 <body>
-    <h1>Вход</h1>
-    <form method="post", action="/login">
-        <input type="text" name="username" placeholder="Логин" required>
-        <input type="password" name="password" placeholder="Пароль" required>
-        <button type="submit">Войти</button>
-    </form>
-    {% if error %}
-    <p style="color: red">{{ error }}</p>
-    {% endif %}
-    <a href="/register">зарегистрироваться</a>
+    <div class="page">
+
+        <h1 class="site-title">✅ Task Tracker</h1>
+
+        <div class="container">
+            <h1>Вход</h1>
+
+            <form method="post" action="/login">
+                <input type="text" name="username" placeholder="Логин" required>
+                <input type="password" name="password" placeholder="Пароль" required>
+                <button type="submit">Войти</button>
+
+                {% if error %}
+                    <p class="error">{{ error }}</p>
+                {% endif %}
+            </form>
+
+            <a href="/register">Зарегистрироваться</a>
+        </div>
+
+    </div>
 </body>
 </html>

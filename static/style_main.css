@@ -1,0 +1,355 @@
+/* =========================
+   RESET
+========================= */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+/* =========================
+   BASE LAYOUT
+========================= */
+body {
+    background-color: #f5f5f5;
+    color: #333;
+    padding: 20px;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* =========================
+   TYPOGRAPHY
+========================= */
+h1 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+h2, h3 {
+    text-align: center;
+    font-weight: normal;
+}
+
+/* =========================
+   LINKS
+========================= */
+a {
+    color: #007BFF;
+    text-decoration: none;
+    margin-right: 10px;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Центрируем ссылки перехода */
+a[href="/logout"] {
+    display: inline-block;
+    margin: 10px auto;
+    text-align: center;
+}
+
+/* =========================
+   USER INFO
+========================= */
+.user-info {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+/* =========================
+   SORT BLOCK
+========================= */
+.container > div:first-of-type {
+    margin-bottom: 15px;
+}
+
+.container > div:first-of-type a {
+    font-size: 0.95em;
+}
+
+/* =========================
+   TASK LIST
+========================= */
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #fafafa;
+    margin-bottom: 10px;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.task-item:hover {
+    background-color: #f0f8ff;
+    transform: translateY(-2px);
+}
+
+/* =========================
+   TASK CONTENT
+========================= */
+.task-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    flex: 0 0 90%;
+}
+
+.task-title,
+.task-desc {
+    word-break: break-word;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+
+.task-content .task-buttons {
+    display: flex;
+    gap: 5px;
+}
+
+/* =========================
+   CHECKBOX
+========================= */
+.task-toggle {
+    display: flex;
+    flex: 0 0 5%;
+    min-width: 30px;
+    justify-content: flex-start;
+    align-self: center;
+}
+
+.task-toggle input[type="checkbox"] {
+    width: 22px;
+    height: 22px;
+    cursor: pointer;
+}
+
+/* =========================
+   CREATE FORM
+========================= */
+.create {
+    position: sticky;
+    bottom: 0;
+    max-width: 800px;
+    margin: 10px auto 0;
+    background: white;
+    padding: 5px 10px;
+    border-top: 1px solid #ddd;
+    box-shadow: 0 -1px 6px rgba(0,0,0,0.08);
+    border-radius: 8px;
+}
+
+.create strong {
+    display: block;
+    text-align: center;
+}
+
+.create form {
+    max-width: 800px;
+    margin: 5px auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.create form input[type="text"],
+.create form textarea,
+.edit-title,
+.edit-desc {
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 0.86em;
+    width: 100%;
+    height: 40px;
+    min-height: 40px;
+    max-height: 100px;
+    transition: border-color 0.2s, height 0.2s ease;
+    resize: none;
+    overflow: auto;
+}
+
+
+form input[type="text"]:focus,
+.edit-title:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+
+
+form textarea:focus,
+.edit-desc:focus {
+    border-color: #007BFF;
+    outline: none;
+    height: 100px;
+}
+
+
+/* =========================
+   BUTTONS (BASE)
+========================= */
+button,
+a.button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.task-content button {
+    min-width: 80px;
+    width: 95px;
+    padding: 6px 12px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    display: inline-block;
+}
+
+/* =========================
+   BUTTON TYPES
+========================= */
+
+/* Изменить */
+.task-content button[onclick^="editTask"] {
+    background-color: #007BFF;
+    color: #fff;
+}
+
+.task-content button[onclick^="editTask"]:hover {
+    background-color: #0056b3;
+}
+
+/* Сохранить */
+.task-content button[onclick^="saveTask"] {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.task-content button[onclick^="saveTask"]:hover {
+    background-color: #e0a800;
+}
+
+/* Удалить */
+.task-content button[style*="color:red"],
+.task-content button.delete {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.task-content button[style*="color:red"]:hover,
+.task-content button.delete:hover {
+    background-color: #b02a37;
+}
+
+/* =========================
+   DELETE FORM BUTTON
+========================= */
+.task-content form {
+    display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.task-content form button {
+    padding: 6px 12px;
+    font-size: 0.9em;
+    min-width: 70px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+    text-align: center;
+    background-color: #dc3545;
+    color: #fff;
+    transition: background-color 0.2s;
+}
+
+.task-content form button:hover {
+    background-color: #b02a37;
+}
+
+/* =========================
+   CREATE BUTTON
+========================= */
+.create form button {
+    background-color: #28a745;
+    color: #fff;
+    padding: 6px 12px;
+    font-size: 0.9em;
+}
+
+.create form button:hover {
+    background-color: #218838;
+}
+
+/* =========================
+   LOGOUT BUTTON
+========================= */
+a[href="/logout"] {
+    position: fixed;
+    bottom: 10px;
+    left: 10px;
+    width: 95px;
+    padding: 6px 12px;
+    background-color: #dc3545;
+    color: #fff;
+    border-radius: 5px;
+    font-size: 0.9em;
+    text-decoration: none;
+    z-index: 1000;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: background-color 0.2s;
+}
+
+a[href="/logout"]:hover {
+    background-color: #b02a37;
+}
+
+.task-updated {
+    font-size: 0.8em;
+    color: grey;
+}
+
+/* =========================
+   ADAPTIVE
+========================= */
+@media (max-width: 600px) {
+
+    .task-item {
+        flex-direction: column;
+    }
+
+    .task-content {
+        max-width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .task-toggle {
+        justify-content: flex-start;
+    }
+}

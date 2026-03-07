@@ -1,10 +1,12 @@
-from fastapi import FastAPI, Depends, Request, Form, Query, Body
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, Depends, Request, Form, Query, Body, HTTPException
 from sqlalchemy.orm import Session
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-
+import re
 from database import get_db
 from models import User, Task
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
@@ -30,15 +32,13 @@ def get_current_user(request: Request, db: Session = Depends(get_db)):
         if not raw_token or not raw_token.startswith("Bearer "):
             return None
         token = raw_token[7:]# убираем "Bearer "
-        # проверяем подлинность токена
-        payload = verify_jwt_token(token)
+        payload = verify_jwt_token(token) # проверяем подлинность токена
         user = db.query(User).filter(User.id == payload["user_id"]).first()
         return user
     except Exception:
         return None
 
 
-# ДЕКОРАТОРЫ
 
 # --------------------------
 # Регистрация
@@ -53,7 +53,11 @@ def register(request: Request, username: str = Form(...), password: str = Form(.
     # Проверяем, существует ли пользователь с таким логином
     existing_user = db.query(User).filter(User.username == username).first() # первый найденный объект
     if existing_user:
-        return templates.TemplateResponse("register.html", {"request": request, "error": "Пользователь уже существует!"})
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Такой пользователь уже существует."})
+    if not re.fullmatch(r"[A-Za-z0-9]+", password):
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Пароль должен состоять только из латинских букв или цифр."})
+    if len(password) < 8:
+        return templates.TemplateResponse("register.html", {"request": request, "error": "Минимальная длина пароля - 8 символов."})
     # Хешируем пароль перед сохранением
     hashed_pw = hash_password(password)
     # Создаём нового пользователя
@@ -109,7 +113,6 @@ def home():
     return RedirectResponse(url="/home", status_code=302)
 
 
-
 # -----------------------------
 # Список задач (home)
 # -----------------------------
@@ -133,9 +136,9 @@ def home_tasks(
             query = query.order_by(Task.status.desc())
     else:  # сортировка по дате
         if order == "asc":
-            query = query.order_by(Task.created_at.asc())
+            query = query.order_by(Task.updated_at.asc())
         else:
-            query = query.order_by(Task.created_at.desc())
+            query = query.order_by(Task.updated_at.desc())
 
     tasks = query.all()
 
@@ -149,19 +152,6 @@ def home_tasks(
             "order": order
         }
     )
-
-
-
-# -----------------------------
-# Информация о пользователе
-# -----------------------------
-@app.get("/users/me", response_class=HTMLResponse)
-def users_me(request: Request, current_user: User = Depends(get_current_user)):
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=302)
-    return templates.TemplateResponse("users_me.html", {"request": request, "user": current_user})
-
-
 
 
 # -----------------------------
@@ -181,13 +171,20 @@ def create_task(
     new_task = Task(
         title=title,
         description=description,
-        status="pending",  # 👈 статус задаётся сервером
+        status="pending",
         user_id=current_user.id
     )
 
-    db.add(new_task)
-    db.commit()
-    db.refresh(new_task)
+    try:
+        db.add(new_task)
+        db.commit()
+        db.refresh(new_task)
+    except Exception as e:
+        db.rollback()  # откатываем изменения при ошибке
+        return templates.TemplateResponse(
+            "home.html",
+            {"request": request, "error": f"Ошибка при создании задачи: {str(e)}"}
+        )
 
     return RedirectResponse("/home", status_code=302)
 
@@ -195,82 +192,6 @@ def create_task(
 
 # -----------------------------
 # Изменить задачу
-# -----------------------------
-@app.post("/tasks/edit/{task_id}")
-def edit_task(
-        request: Request,
-        task_id: int,
-        title: str = Form(),
-        description: str = Form(),
-        status: str = Form(),
-        current_user: User = Depends(get_current_user),
-        db: Session = Depends(get_db)
-):
-    if not current_user:
-        return RedirectResponse("/login", status_code=302)
-    existing_task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
-    if not existing_task:
-        return templates.TemplateResponse("home.html", {"request": request, "error": "Заметка не найдена"})
-
-    if title is not None:
-        existing_task.title = title
-    if description is not None:
-        existing_task.description = description
-    if status is not None:
-        existing_task.status = status
-
-    db.commit()
-    db.refresh(existing_task)
-    return RedirectResponse(url="/home", status_code=302)
-
-
-# -----------------------------
-# Удалить задачу
-# -----------------------------
-@app.post("/tasks/delete/{task_id}")
-def delete_task(
-        request: Request,
-        task_id: int,
-        current_user: User = Depends(get_current_user),
-        db: Session = Depends(get_db)
-):
-    if not current_user:
-        return RedirectResponse("/login", status_code=302)
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
-    if not task:
-        return templates.TemplateResponse("home.html", {"request": request, "error": "Заметка не найдена"})
-    db.delete(task)
-    db.commit()
-    return RedirectResponse(url="/home", status_code=302)
-
-# -----------------------------
-# Изменить статус задачи
-# -----------------------------
-@app.post("/tasks/toggle/{task_id}")
-def toggle_task(
-    task_id: int,
-    sort: str = Form("date"),   # принимаем текущую сортировку
-    order: str = Form("desc"),  # принимаем текущее направление
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    if not current_user:
-        return RedirectResponse("/login", status_code=302)
-
-    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
-    if not task:
-        return RedirectResponse(f"/home?sort={sort}&order={order}", status_code=302)
-
-    # Переключаем статус
-    task.status = "done" if task.status != "done" else "pending"
-    db.commit()
-    db.refresh(task)
-
-    # редирект с сохранением сортировки
-    return RedirectResponse(f"/home?sort={sort}&order={order}", status_code=302)
-
-# -----------------------------
-# Изменить текст задачи
 # -----------------------------
 @app.post("/tasks/edit_js/{task_id}")
 def edit_task_js(
@@ -292,7 +213,66 @@ def edit_task_js(
 
     task.title = data.get("title", task.title)
     task.description = data.get("description", task.description)
+    task.updated_at = datetime.now(timezone.utc)
 
+    try:
+        db.commit()
+        db.refresh(task)
+    except Exception as e:
+        db.rollback()
+        return JSONResponse(status_code=500, content={"error": f"Ошибка при сохранении задачи: {str(e)}"})
+
+    return {"status": "ok"}
+
+
+# -----------------------------
+# Удалить задачу
+# -----------------------------
+@app.post("/tasks/delete/{task_id}")
+def delete_task(
+        request: Request,
+        task_id: int,
+        current_user: User = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    if not current_user:
+        return RedirectResponse("/login", status_code=302)
+
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        return templates.TemplateResponse("home.html", {"request": request, "error": "Заметка не найдена"})
+
+    try:
+        db.delete(task)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        return templates.TemplateResponse(
+            "home.html",
+            {"request": request, "error": f"Ошибка при удалении задачи: {str(e)}"}
+        )
+
+    return RedirectResponse(url="/home", status_code=302)
+
+# -----------------------------
+# Изменить статус задачи
+# -----------------------------
+@app.post("/tasks/toggle_js/{task_id}")
+def toggle_task_js(
+    task_id: int,
+    data: dict = Body(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not current_user:
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
+
+    task = db.query(Task).filter(Task.id == task_id, Task.user_id == current_user.id).first()
+    if not task:
+        return JSONResponse(status_code=404, content={"error": "Task not found"})
+
+    task.status = data.get("status", task.status)
+    task.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(task)
 

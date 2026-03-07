@@ -24,7 +24,6 @@ class Task(Base):
     status = Column(String, default="pending")
     user_id = Column(Integer, ForeignKey("users.id")) # связь с id модели "User"
 
-    created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     owner = relationship("User", back_populates="tasks")
