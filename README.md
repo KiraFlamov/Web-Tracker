@@ -6,7 +6,14 @@ Web-Tracker — это full-stack веб-приложение для управ�
 
 ## Скриншоты
 
+### Авторизация
+<img src="screenshots/login.png" width="700"/>
 
+### Заметки
+<img src="screenshots/main.png" width="700"/>
+
+### Изменение заметки
+<img src="screenshots/edit.png" width="700"/>
 
 ## 🚀 Возможности
 
