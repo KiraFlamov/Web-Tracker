@@ -46,3 +46,9 @@ cd Web-Tracker
 
 pip install -r requirements.txt
 uvicorn main:app --reload
+```
+---
+
+## Лицензия
+
+Проект распространяется под лицензией MIT. Подробнее — в файле [LICENSE](LICENSE).
