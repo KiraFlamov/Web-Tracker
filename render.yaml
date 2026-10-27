@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: web-tracker
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: web-tracker-db
+          property: connectionString
+
+databases:
+  - name: web-tracker-db
+    plan: free
+    databaseName: task_tracker

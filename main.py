@@ -7,9 +7,11 @@ from fastapi.responses import RedirectResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 import re
-from database import get_db
+from database import get_db, Base, engine
 from models import User, Task
 from auth import hash_password, create_jwt_token, verify_password, verify_jwt_token
+
+Base.metadata.create_all(bind=engine) # создаём таблицы, если их ещё нет
 
 app = FastAPI()
 
