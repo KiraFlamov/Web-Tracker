@@ -13,7 +13,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:mydatabase@local
 if DATABASE_URL.startswith("postgres://"): # SQLAlchemy понимает только "postgresql://"
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-engine = create_engine(DATABASE_URL) # Движок БД
+engine = create_engine(DATABASE_URL, pool_pre_ping=True) # Движок БД; pre_ping - проверять соединение перед использованием (Neon закрывает простаивающие)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine) # "Фабрика" для создания сессий
 
