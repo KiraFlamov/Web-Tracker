@@ -2,6 +2,10 @@
 
 Web-Tracker — это full-stack веб-приложение для управления задачами с авторизацией пользователей и REST API на FastAPI.
 
+🌐 **Демо:** [web-tracker-7q0i.onrender.com](https://web-tracker-7q0i.onrender.com/)
+
+> Приложение размещено на бесплатном тарифе Render: после простоя сервер «засыпает», поэтому первая загрузка может занять до минуты.
+
 ---
 
 ## Скриншоты
@@ -35,18 +39,29 @@ Web-Tracker — это full-stack веб-приложение для управ�
 - PostgreSQL
 - JWT
 - HTML / CSS / JavaScript
+- Render (хостинг) + Neon (PostgreSQL)
 
 ---
 
 ## ⚙️ Запуск проекта
 
 ```bash
-git clone https://github.com/your-username/Web-Tracker.git
+git clone https://github.com/KiraFlamov/Web-Tracker.git
 cd Web-Tracker
 
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
+
+Перед запуском создайте файл `.env` в корне проекта:
+
+```env
+SECRET_KEY=любая-случайная-строка
+DATABASE_URL=postgresql://user:password@localhost/task_tracker
+```
+
+Таблицы в базе создаются автоматически при первом запуске.
+
 ---
 
 ## Лицензия
